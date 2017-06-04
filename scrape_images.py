@@ -9,6 +9,7 @@ from selenium.common.exceptions import (
 )
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.expected_conditions import staleness_of
+from selenium.webdriver.common.keys import Keys
 
 
 """
@@ -26,8 +27,24 @@ target_address = "https://www.instagram.com/justinbieber/"
 # END Settings
 
 
+def safe_get_elem(fn, *args, **kwargs):
+    tries = 0
+
+    while tries < 30:
+        try:
+            return fn(*args, **kwargs)
+        except NoSuchElementException:
+            tries += 1
+
+    raise NoSuchElementException
+
+
 def find_thumbnails(driver):
     return driver.find_elements_by_xpath("//article/div/div/div/a")
+
+
+# def find_close_button(driver):
+    # return safe_get_elem(driver.find_element_by_xpath, "//*[contains(text(), 'Close')]")
 
 
 def scrape_item(driver, folder, elem):
@@ -37,22 +54,21 @@ def scrape_item(driver, folder, elem):
     # Wait to render
 
     # Find images to download
-    import ipdb; ipdb.set_trace()
-    image_elem = driver.find_element_by_xpath("//article/div/div/div/div/img")
+    # import ipdb; ipdb.set_trace()
+    # image_elem = driver.find_element_by_xpath("//article/div/div/div/div/img")
+    image_elem = safe_get_elem(driver.find_element_by_xpath, "//article/div/div/div/div/img")
     image_src = image_elem.get_property('src')
     response = requests.get(image_src, stream=True)
     output_filepath = "{}/{}".format(folder, os.path.basename(image_src))
     with open(output_filepath, 'wb') as output_file:
         shutil.copyfileobj(response.raw, output_file)
     del response
-
     print 'Downloaded file', output_filepath
 
     # Find videos to downloads
 
-    # Print result to terminal
-
-    # Return
+    # Return to main
+    elem.send_keys(Keys.ESCAPE)
 
 
 if __name__ == "__main__":
@@ -86,7 +102,7 @@ if __name__ == "__main__":
 
     # Grab all visible pictures
     thumbnail_elements = find_thumbnails(driver)
-    for elem in thumbnail_elements[:1]:
+    for elem in thumbnail_elements:
         scrape_item(driver, output_folder, elem)
 
     # Loop: scroll down, wait until new pictures have rendered, grab more
